@@ -16,6 +16,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
+from scipy.stats import beta
 from sklearn.datasets import load_iris
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
@@ -76,6 +77,21 @@ button[kind="primary"]:hover, [data-testid="stBaseButton-primary"]:hover {
 .tabela.pequena td { padding: 0.4rem 0.8rem; text-align: right; }
 .tabela tbody th { background: #fff; color: #6A676E; border: 1px solid #E3DFE1; font-weight: 400; }
 .grafico { background: #fff; border: 1px solid #E3DFE1; border-radius: 8px; padding: 0.5rem; }
+.card.texto { font-size: 1.05rem; line-height: 1.5; }
+.card.texto .rotulo { margin: 0 0 0.5rem; }
+.card svg { width: 100%; max-width: 460px; height: auto; display: block; margin: 0.3rem 0 0.8rem; }
+.regua { position: relative; margin: 2.5rem 0.5rem 0.5rem; }
+.regua-trilho { position: relative; height: 14px; background: #E3DFE1; border-radius: 7px; }
+.regua-faixa { position: absolute; top: 0; height: 100%; background: #ED145B; border-radius: 7px; }
+.regua-ponto { position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 50%;
+               background: #16161A; border: 3px solid #fff; transform: translate(-50%, -50%); }
+.regua-escala { position: relative; height: 1.6rem; margin-top: 0.5rem; color: #6A676E; font-size: 0.9rem; }
+.regua-escala span { position: absolute; transform: translateX(-50%); }
+.regua-legenda { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 1rem; font-size: 0.95rem; }
+.regua-legenda i { display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+                   vertical-align: -2px; margin-right: 0.4rem; }
+.destaque { font-size: 1.3rem; line-height: 1.5; margin-top: 1.6rem; max-width: 60ch; }
+.destaque b { color: #ED145B; }
 .contador { text-align: center; color: #6A676E; font-weight: 700; }
 .titulo { font-size: 2.6rem; font-weight: 700; line-height: 1.15; margin: 0.8rem 0 1.8rem; }
 
@@ -173,7 +189,15 @@ def preparar():
         resultados.append({"Valor de K (Vizinhos)": k,
                            "Acurácia": accuracy_score(y_test, y_pred)})
 
+    # Margem de erro da acurácia (intervalo de confiança de 95%, método de Clopper-Pearson).
+    # Usa o y_pred da última volta do loop, igual ao código do Colab.
+    acertos = int((y_pred == y_test).sum())
+    total = len(y_test)
+    inferior = 0.0 if acertos == 0 else beta.ppf(0.025, acertos, total - acertos + 1)
+    superior = 1.0 if acertos == total else beta.ppf(0.975, acertos + 1, total - acertos)
+
     return {
+        "acertos": acertos, "total": total, "ic": (inferior, superior),
         "original": original, "df": df, "ausentes": ausentes,
         "duplicadas": duplicadas, "pares": pares_duplicados,
         "X_train": X_train, "X_test": X_test,
@@ -290,6 +314,8 @@ def s_bibliotecas():
         ["train_test_split", "Separar os dados em treino e teste"],
         ["KNeighborsClassifier", "Criar o modelo KNN"],
         ["accuracy_score", "Calcular a acurácia (taxa de acertos)"],
+        ["matplotlib e seaborn", "Desenhar o box-plot"],
+        ["statsmodels", "Calcular a margem de erro (intervalo de confiança)"],
     ], coluna_mono=0)
 
 
@@ -389,6 +415,91 @@ def s_cod_exploracao():
                f"({num(r['mean'])}) fica bem abaixo da mediana ({num(r['50%'])}). Isso indica um grupo de "
                "flores com pétalas bem menores puxando a média para baixo: as setosas. Ou seja, a pétala "
                "deve ser a medida que mais separa as espécies."),
+    )
+
+
+def s_boxplot():
+    titulo("Box-plot: as medidas de cada espécie")
+    longo = D["original"].melt(id_vars="especie", value_vars=COLUNAS, var_name="Medida", value_name="cm")
+    longo["Medida"] = longo["Medida"].map(NOMES_PT)
+    longo["Espécie"] = longo["especie"].map(ESPECIES)
+    fig = px.box(
+        longo, x="Espécie", y="cm", color="Espécie", facet_col="Medida",
+        facet_col_spacing=0.05, color_discrete_map=CORES, template="plotly_white",
+        category_orders={"Medida": [NOMES_PT[c] for c in COLUNAS]},
+    )
+    fig.update_yaxes(matches=None, showticklabels=True, gridcolor="#ECE8EB")  # cada medida na sua escala
+    fig.update_xaxes(title_text="")
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))  # tira o "Medida="
+    fig.update_layout(
+        height=430, showlegend=False, boxmode="overlay",
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF",
+        font=dict(family="Helvetica Neue, Arial, sans-serif", size=15, color="#16161A"),
+    )
+    st.plotly_chart(fig, theme=None)
+
+    esquema = (
+        '<svg viewBox="0 0 450 100" xmlns="http://www.w3.org/2000/svg" '
+        'font-family="Helvetica Neue, Arial, sans-serif" font-size="13" fill="#16161A">'
+        '<line x1="50" y1="50" x2="330" y2="50" stroke="#16161A" stroke-width="2"/>'
+        '<line x1="50" y1="40" x2="50" y2="60" stroke="#16161A" stroke-width="2"/>'
+        '<line x1="330" y1="40" x2="330" y2="60" stroke="#16161A" stroke-width="2"/>'
+        '<rect x="130" y="30" width="120" height="40" fill="#fff" stroke="#16161A" stroke-width="2"/>'
+        '<line x1="185" y1="30" x2="185" y2="70" stroke="#ED145B" stroke-width="4"/>'
+        '<circle cx="395" cy="50" r="5" fill="none" stroke="#16161A" stroke-width="2"/>'
+        '<text x="185" y="20" text-anchor="middle" fill="#ED145B" font-weight="700">mediana (50%)</text>'
+        '<text x="395" y="30" text-anchor="middle">fora do padrão</text>'
+        '<text x="50" y="90" text-anchor="middle">menor valor</text>'
+        '<text x="130" y="90" text-anchor="middle">25%</text>'
+        '<text x="250" y="90" text-anchor="middle">75%</text>'
+        '<text x="330" y="90" text-anchor="middle">maior valor</text>'
+        '</svg>'
+    )
+    col_ler, col_mostra = st.columns(2, gap="large")
+    with col_ler:
+        html_bloco(
+            f'<div class="card texto"><div class="rotulo">Como ler</div>{esquema}'
+            'A caixa vai do 25% ao 75%: é onde está a metade do meio das flores. A linha rosa é a '
+            'mediana. As hastes vão até o menor e o maior valor, sem contar os pontos fora do padrão. '
+            'São os mesmos números do describe(), só que desenhados.</div>'
+        )
+    with col_mostra:
+        html_bloco(
+            '<div class="card texto"><div class="rotulo">O que o gráfico mostra</div>'
+            '<p>Na pétala, a caixa da setosa fica totalmente separada das outras: dá para reconhecer '
+            'uma setosa só pela pétala. Versicolor e virginica ficam próximas, mas com caixas '
+            'separadas.</p>'
+            '<p>Nas duas medidas da sépala, as caixas da versicolor e da virginica se sobrepõem: '
+            'sozinhas, essas medidas confundem as duas espécies.</p></div>'
+        )
+
+
+def s_cod_boxplot():
+    titulo("Código: box-plot")
+    slide_codigo(
+        "import matplotlib.pyplot as plt\n"
+        "import seaborn as sns\n"
+        "\n"
+        "fig, eixos = plt.subplots(1, 4, figsize=(16, 4))\n"
+        "for eixo, coluna in zip(eixos, iris.feature_names):\n"
+        "    sns.boxplot(data=df, x='especie', y=coluna, ax=eixo)\n"
+        "plt.tight_layout()\n"
+        "plt.show()",
+        [
+            ("Linhas 1 e 2", "matplotlib e seaborn",
+             "O matplotlib desenha gráficos em Python. O seaborn é construído em cima dele e faz gráficos "
+             "estatísticos, como o box-plot, com bem menos código."),
+            ("Linha 4", "plt.subplots(1, 4, figsize=(16, 4))",
+             "Cria uma figura com 1 linha e 4 espaços para gráficos, um para cada medida. O figsize define "
+             "a largura e a altura."),
+            ("Linha 5", "zip(eixos, iris.feature_names)",
+             "Junta cada espaço com uma medida. A cada volta do loop, o eixo da vez recebe a coluna da vez."),
+            ("Linha 6", "sns.boxplot(...)",
+             "Desenha uma caixa para cada espécie (x) com os valores da medida (y), no espaço da vez (ax)."),
+            ("Linhas 7 e 8", "tight_layout() e show()",
+             "Ajusta o espaçamento para os gráficos não se encostarem e mostra a figura."),
+        ],
     )
 
 
@@ -558,6 +669,70 @@ def s_cod_tabela():
     )
 
 
+def s_margem():
+    titulo("Margem de erro da acurácia")
+    acertos, total = D["acertos"], D["total"]
+    inferior, superior = D["ic"]
+
+    def posicao(valor):  # a régua vai de 80% a 100%
+        return (valor - 0.8) / 0.2 * 100
+
+    escala = "".join(f'<span style="left:{posicao(v / 100):.1f}%">{v}%</span>' for v in [80, 85, 90, 95, 100])
+    col_card, col_regua = st.columns([1, 2.2], gap="large")
+    with col_card:
+        cards([(f"{acertos} de {total}", "flores acertadas no teste",
+                f"Acurácia medida: {num(acertos / total * 100, 0)}%")])
+    with col_regua:
+        html_bloco(
+            '<div class="regua">'
+            '<div class="regua-trilho">'
+            f'<div class="regua-faixa" style="left:{posicao(inferior):.1f}%;'
+            f'width:{posicao(superior) - posicao(inferior):.1f}%"></div>'
+            f'<div class="regua-ponto" style="left:{posicao(acertos / total):.1f}%"></div></div>'
+            f'<div class="regua-escala">{escala}</div>'
+            '<div class="regua-legenda">'
+            '<span><i style="background:#ED145B"></i>Intervalo de 95% de confiança</span>'
+            '<span><i style="background:#16161A"></i>Acurácia medida no teste</span></div></div>'
+        )
+    html_bloco(
+        '<div class="texto-apoio destaque">Acertar todas as flores do teste não garante que o modelo nunca '
+        f'erra. Com 95% de confiança, a acurácia real fica entre <b>{num(inferior * 100, 1)}%</b> e '
+        f'<b>{num(superior * 100, 0)}%</b>. Com mais flores no teste, esse intervalo ficaria mais estreito.</div>'
+    )
+
+
+def s_cod_margem():
+    titulo("Código: margem de erro")
+    acertos, total = D["acertos"], D["total"]
+    inferior, superior = D["ic"]
+    slide_codigo(
+        "from statsmodels.stats.proportion import proportion_confint\n"
+        "\n"
+        "acertos = (y_pred == y_test).sum()\n"
+        "total = len(y_test)\n"
+        "inferior, superior = proportion_confint(acertos, total, alpha=0.05, method='beta')\n"
+        "print(f\"Acurácia: {acertos/total:.1%} | intervalo de 95%: {inferior:.1%} a {superior:.1%}\")",
+        [
+            ("Linha 1", "proportion_confint",
+             "Função da biblioteca statsmodels que calcula o intervalo de confiança de uma proporção, "
+             "como acertos ÷ total."),
+            ("Linha 3", "(y_pred == y_test).sum()",
+             "Compara previsão e gabarito flor a flor (verdadeiro ou falso). O sum() conta os verdadeiros: "
+             "são os acertos."),
+            ("Linha 4", "len(y_test)", "Conta quantas flores tem o teste."),
+            ("Linha 5", "alpha=0.05, method='beta'",
+             "alpha=0.05 significa 95% de confiança. O método beta (Clopper-Pearson) é exato e indicado "
+             "para amostras pequenas e acurácia perto de 100%."),
+        ],
+        resultado=lambda: saida(f"Acurácia: {acertos / total:.1%} | intervalo de 95%: "
+                                f"{inferior:.1%} a {superior:.1%}"),
+        caixa=("Como explicar",
+               "Se repetíssemos o sorteio do teste muitas vezes, em 95% delas o intervalo calculado conteria "
+               "a acurácia real do modelo. O y_pred usado é o da última volta do loop (K = 9); como todos os "
+               "K acertaram tudo, o intervalo é o mesmo para qualquer um deles."),
+    )
+
+
 def s_demo():
     titulo("Demonstração: classificando uma flor nova")
     df, X_train, y_train = D["df"], D["X_train"], D["y_train"]
@@ -632,8 +807,10 @@ def s_conclusao():
     html_bloco(
         '<div class="bloco escuro conclusao">'
         '<div class="titulo" style="color:#F6F4F5">Conclusão</div>'
-        '<p><b>Parte 1:</b> dados sem valores ausentes, duplicidade tratada, dataset pronto para uso.</p>'
-        f'<p><b>Parte 2:</b> {parte2}</p>'
+        '<p><b>Parte 1:</b> dados sem valores ausentes, duplicidade tratada, dataset pronto para uso. '
+        'O box-plot mostrou que a pétala é a medida que mais separa as espécies.</p>'
+        f'<p><b>Parte 2:</b> {parte2} Com 95% de confiança, a acurácia real fica entre '
+        f'{num(D["ic"][0] * 100, 1)}% e {num(D["ic"][1] * 100, 0)}%.</p>'
         '<div class="obrigado">Obrigado! Perguntas?</div></div>'
     )
 
@@ -646,6 +823,8 @@ SLIDES = [
     ("Código: coleta dos dados", s_cod_coleta),
     ("Resumo estatístico", s_resumo),
     ("Código: exploração dos dados", s_cod_exploracao),
+    ("Box-plot: as medidas de cada espécie", s_boxplot),
+    ("Código: box-plot", s_cod_boxplot),
     ("Valores ausentes e duplicidades", s_ausentes),
     ("Código: ausentes e duplicidades", s_cod_ausentes),
     ("Conclusão da Parte 1", s_conclusao_parte1),
@@ -655,6 +834,8 @@ SLIDES = [
     ("Código: o loop de treinamento", s_cod_loop),
     ("Tabela comparativa de resultados", s_tabela),
     ("Código: tabela de resultados", s_cod_tabela),
+    ("Margem de erro da acurácia", s_margem),
+    ("Código: margem de erro", s_cod_margem),
     ("Demonstração ao vivo", s_demo),
     ("Conclusão", s_conclusao),
 ]

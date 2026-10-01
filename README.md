@@ -44,6 +44,8 @@ flowchart LR
 - Carregamos o dataset e montamos um DataFrame com as 4 medidas e a coluna `especie`.
 - Exploramos a estrutura com `head()` e `describe()`. O comprimento da pétala tem o maior desvio
   padrão e a média abaixo da mediana, um sinal de que essa medida separa bem as espécies.
+- Desenhamos um **box-plot** de cada medida por espécie. Na pétala, a caixa da setosa fica totalmente
+  separada das outras; nas medidas da sépala, versicolor e virginica se sobrepõem.
 - Verificamos valores ausentes (nenhum) e linhas duplicadas (uma, que foi removida).
   O dataset tratado ficou com **149 flores**.
 
@@ -53,6 +55,7 @@ flowchart LR
 - Dividimos em **104 flores para treino** e **45 para teste**, com `random_state=42` para o
   resultado ser sempre o mesmo.
 - Treinamos e avaliamos o KNN com 1, 3, 5, 7 e 9 vizinhos.
+- Calculamos a **margem de erro** da acurácia com um intervalo de confiança de 95%.
 
 ## 🧠 Como o KNN decide
 
@@ -78,9 +81,12 @@ percentuais. Com todos os valores de k empatados, essa divisão não permite apo
 O próximo passo seria usar **validação cruzada**, que repete a avaliação com várias divisões
 diferentes.
 
+**Margem de erro:** acertar 45 de 45 flores não garante que o modelo nunca erra. Com 95% de
+confiança, a acurácia real fica entre **92,1% e 100%**.
+
 ## 🎤 A apresentação em Streamlit
 
-Em vez de slides estáticos, a apresentação é um app com **18 slides**:
+Em vez de slides estáticos, a apresentação é um app com **22 slides**:
 
 - **Código explicado linha a linha**, com o resultado de cada trecho gerado na hora.
 - **Demonstração ao vivo:** ajuste as medidas de uma flor e o valor de K e veja a espécie prevista,
@@ -94,7 +100,7 @@ Em vez de slides estáticos, a apresentação é um app com **18 slides**:
 checkpoint-iris-knn/
 ├── .streamlit/
 │   └── config.toml                       # tema claro com o rosa da FIAP
-├── apresentacao.py                       # apresentação em Streamlit (18 slides)
+├── apresentacao.py                       # apresentação em Streamlit (22 slides)
 ├── app.py                                # app extra para explorar o modelo
 ├── Checkpoint2_Iris_KNN.ipynb            # notebook original do Colab
 ├── Checkpoint2_Iris_KNN_com_codigo.pdf   # apresentação em PDF
@@ -119,6 +125,8 @@ O navegador abre sozinho. Para apresentar, aperte **F11** para ficar em tela che
 |---|---|
 | **pandas** | Organizar e explorar os dados em tabela |
 | **scikit-learn** | Dataset, divisão treino/teste, modelo KNN e acurácia |
+| **matplotlib e seaborn** | Box-plot no notebook |
+| **statsmodels** | Margem de erro (intervalo de confiança) no notebook |
 | **Streamlit** | Apresentação interativa |
 | **Plotly** | Gráfico da demonstração ao vivo |
 | **Google Colab** | Desenvolvimento do notebook |
