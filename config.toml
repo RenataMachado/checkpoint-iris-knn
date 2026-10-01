@@ -1,0 +1,14 @@
+# Tema da apresentação: claro, com o rosa da FIAP.
+# Este arquivo precisa ficar dentro de uma pasta chamada .streamlit,
+# que fica na mesma pasta do apresentacao.py.
+
+[theme]
+base = "light"
+primaryColor = "#ED145B"
+backgroundColor = "#F6F4F5"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#16161A"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
